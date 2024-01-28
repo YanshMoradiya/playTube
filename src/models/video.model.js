@@ -13,6 +13,7 @@ const videoSchema = new Schema({
     title: {
         type: String,
         required: true,
+        index: true,
     },
     discription: {
         type: String,

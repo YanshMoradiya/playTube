@@ -1,7 +1,15 @@
 import connectDB from "./db/index.js";
 import dotenv from "dotenv";
 import { app } from "./app.js";
+import { v2 as cloudinary } from "cloudinary";
 dotenv.config();
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_CLOUD_KEY,
+    api_secret: process.env.CLOUDINARY_CLOUD_SECRET,
+});
+
 
 connectDB()
     .then(() => {
@@ -15,3 +23,5 @@ connectDB()
     .catch((err) => {
         console.log(`MongoDb connection Failed : `, err);
     });
+
+export { cloudinary };

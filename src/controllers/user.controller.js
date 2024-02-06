@@ -212,22 +212,21 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
             throw new ApiError(401, "Please enter file.");
         }
 
-        if (req.user.avatar) {
-            const deleteOldFile = await deleteCloudinary(req.user.avatar, "image");
-
-            if (!deleteOldFile) {
-                throw new ApiError(401, "Something went wrong while uploading file on server.");
-            }
-        }
-
         const uploadFileToCloudinary = await uploadCloudinary(req.file.path);
 
         if (!uploadFileToCloudinary) {
             throw new ApiError(401, "Something went wrong while uploading file on server.");
         }
 
+        const oldAvatarFileUrl = req.user.avatar;
         req.user.avatar = uploadFileToCloudinary.url;
         await req.user.save({ validateBeforeSave: true });
+
+        const deleteOldFile = await deleteCloudinary(oldAvatarFileUrl, "image");
+
+        if (!deleteOldFile) {
+            throw new ApiError(401, "Something went wrong while deleting old file from server.");
+        }
 
         return res.status(200).json(new ApiResponse(200, "file successfully updated."));
     } catch (error) {
@@ -241,20 +240,13 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
     try {
-        if (req.user?.coverImage) {
-            const deleteOldCoverImage = await deleteCloudinary(req.user.coverImage);
-            if (!deleteOldCoverImage) {
-                throw new ApiError(401, "Something went wrong while uploading cover image on server.");
-            }
-        }
-
+        const oldCoverImageFileUrl = req.user.coverImage;
         if (req.file) {
             const uploadCoverImage = await uploadCloudinary(req.file?.path);
 
             if (!uploadCoverImage) {
                 throw new ApiError(401, "Something went wrong while uploading cover image on server.");
             }
-
             req.user.coverImage = uploadCoverImage?.url;
         }
         else if (!req.file && req.user.coverImage) {
@@ -262,6 +254,14 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         }
 
         await req.user.save({ validateBeforeSave: true });
+
+        if (oldCoverImageFileUrl) {
+            const deleteOldCoverImage = await deleteCloudinary(oldCoverImageFileUrl, "image");
+            if (!deleteOldCoverImage) {
+                throw new ApiError(401, "Something went wrong while deleting cover image from server.");
+            }
+        }
+
         return res.status(200).json(new ApiResponse(200, "cover image successfully updated."));
     } catch (error) {
         console.log(error)

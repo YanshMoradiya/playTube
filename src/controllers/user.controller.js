@@ -272,4 +272,75 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 });
 
+const getChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "please enter a username.");
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            // for subscriber data
+            $lookup: {
+                as: "subscriberData",
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel"
+            }
+        },
+        {
+            // subscribed to data
+            $lookup: {
+                as: "subscribedToData",
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: {
+                    $size: "$subscriberData"
+                },
+                subscribedToCount: {
+                    $size: "$subscribedToData"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {
+                            $in: [req.user?._id, "$subscriberData.subscriber"]
+                        },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                "username": 1,
+                "email": 1,
+                "fullName": 1,
+                "avatar": 1,
+                "coverImage": 1,
+                "subscriberCount": 1,
+                "subscribedToCount": 1,
+                "isSubscribed": 1
+            }
+        }
+    ]);
+
+    if (!channel.length) {
+        throw new ApiError(401, "channel does not exist.");
+    }
+
+    res.status(200).json(new ApiResponse(200, "channel fetched successfully.", channel[0]));
+});
+
 export { registerUser, logOut, login, refreshAccessToken, changeCurrentUserPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage };

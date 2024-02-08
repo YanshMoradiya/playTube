@@ -5,6 +5,7 @@ import { uploadCloudinary, deleteCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import fs from 'fs';
 import jwt from "jsonwebtoken";
+import { Types } from "mongoose";
 
 const generateTokens = async (user) => {
     try {
@@ -272,7 +273,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 });
 
-const getChannelProfile = asyncHandler(async (req, res) => {
+const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params;
 
     if (!username?.trim()) {
@@ -343,4 +344,61 @@ const getChannelProfile = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, "channel fetched successfully.", channel[0]));
 });
 
-export { registerUser, logOut, login, refreshAccessToken, changeCurrentUserPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage };
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const watchHistory = await User.aggregate([
+        {
+            $match: {
+                _id: new Types.ObjectId(req.user?._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [{
+                    $lookup: {
+                        from: "users",
+                        localField: "owner",
+                        foreignField: "_id",
+                        as: "owner",
+                        pipeline: [{
+                            $project: {
+                                fullName: 1,
+                                username: 1,
+                                avatar: 1
+                            }
+                        }]
+                    },
+                },
+                {
+                    $addFields: {
+                        owner: {
+                            $first: "$owner"
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        thumbnail: 1,
+                        title: 1,
+                        owner: 1,
+                        views: 1,
+                        createdAt: 1
+                    }
+                }]
+            },
+        },
+        {
+            $project: {
+                watchHistory: 1
+            }
+        }
+    ]);
+
+
+    return res.status(200).json(new ApiResponse(200, "watch history fatched successfully.", watchHistory[0]));
+});
+
+export { registerUser, logOut, login, refreshAccessToken, changeCurrentUserPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory };

@@ -273,7 +273,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 });
 
-const getUserChannelProfile = asyncHandler(async (req, res) => {
+const getChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params;
 
     if (!username?.trim()) {
@@ -344,7 +344,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, "channel fetched successfully.", channel[0]));
 });
 
-const getWatchHistory = asyncHandler(async (req, res) => {
+const getUserWatchHistory = asyncHandler(async (req, res) => {
     const watchHistory = await User.aggregate([
         {
             $match: {
@@ -376,7 +376,8 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                     $addFields: {
                         owner: {
                             $first: "$owner"
-                        }
+                        },
+                        dateNow: new Date()
                     }
                 },
                 {
@@ -385,14 +386,34 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                         title: 1,
                         owner: 1,
                         views: 1,
-                        createdAt: 1
+                        years: {
+                            $dateDiff: {
+                                startDate: "$createdAt",
+                                endDate: "$dateNow",
+                                unit: "year"
+                            }
+                        },
+                        months: {
+                            $dateDiff: {
+                                startDate: "$createdAt",
+                                endDate: "$dateNow",
+                                unit: "month"
+                            }
+                        },
+                        days: {
+                            $dateDiff: {
+                                startDate: "$createdAt",
+                                endDate: "$dateNow",
+                                unit: "day"
+                            }
+                        },
                     }
                 }]
             },
         },
         {
             $project: {
-                watchHistory: 1
+                watchHistory: 1,
             }
         }
     ]);
@@ -401,4 +422,4 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, "watch history fatched successfully.", watchHistory[0]));
 });
 
-export { registerUser, logOut, login, refreshAccessToken, changeCurrentUserPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory };
+export { registerUser, logOut, login, refreshAccessToken, changeCurrentUserPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getChannelProfile, getUserWatchHistory };

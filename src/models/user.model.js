@@ -2,6 +2,13 @@ import bcryptjs from "bcryptjs";
 import mongoose, { Schema, SchemaType } from "mongoose";
 import jsonwebtoken from "jsonwebtoken";
 
+const wathHistorySchema = new Schema({
+    id: {
+        type: Schema.Types.ObjectId,
+        ref: "Video"
+    }
+}, { timestamps: true });
+
 const userSchema = new Schema({
     username: {
         type: String,
@@ -31,10 +38,9 @@ const userSchema = new Schema({
     coverImage: {
         type: String, // cloudnary
     },
-    watchHistory: [{
-        type: Schema.Types.ObjectId,
-        ref: "Video"
-    }],
+    watchHistory: [
+        wathHistorySchema
+    ],
     password: {
         type: String,
         required: true,

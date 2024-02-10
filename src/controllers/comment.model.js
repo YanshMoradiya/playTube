@@ -1,7 +1,6 @@
-import { Tweet } from "../models/tweet.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
-import { Comment } from "./../models/comment.model.js"
+import { Comment } from "./../models/comment.model.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
     const { videoId } = req.params;

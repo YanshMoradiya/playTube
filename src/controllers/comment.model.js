@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import { Comment } from "./../models/comment.model.js";
@@ -13,7 +14,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const comments = await Comment.aggregate([
         {
             $match: {
-                video: videoId
+                video: new mongoose.Schema.Types.ObjectId(videoId)
             }
         },
         {
@@ -193,7 +194,7 @@ const updateComment = asyncHandler(async (req, res) => {
     const updatedComment = await comment.save();
 
     if (!updatedComment) {
-        throw new ApiError(401, "comment is not updated.something went wrong.");
+        throw new ApiError(500, "comment is not updated.something went wrong.");
     }
 
     return res.status(200).json(new ApiResponse(200, "comment updated successfully.", updatedComment));
@@ -219,7 +220,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     const status = await Comment.findByIdAndDelete(commentId);
 
     if (!status) {
-        throw new ApiError(400, "comment not deleted.something is wrong.");
+        throw new ApiError(500, "comment not deleted.something is wrong.");
     }
 
     return res.status(200).json(new ApiResponse(200, "comment deleted successfully."));

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponce";
 import { Playlist } from "./../models/playlist.model.js";
@@ -29,17 +30,17 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     const playlists = await Playlist.aggregate([
         {
             $match: {
-                owner: userId,
+                owner: new mongoose.Schema.Types.ObjectId(userId),
             },
         },
     ]);
 
-    if (!playlists.length) {
-        return res.status(200).json(new ApiResponse(200, "playlist is not exist."));
+    if (!playlists) {
+        throw new ApiError(500, "playlists is not fetched.something went wrong!");
     }
 
-    if (!playlists) {
-        throw new ApiError(500, "playlist is not found.something went wrong!");
+    if (!playlists.length) {
+        return res.status(200).json(new ApiResponse(200, "playlist is not exist."));
     }
 
     return res.status(200).json(new ApiResponse(200, "playlists fetched successfully.", playlists));
@@ -75,7 +76,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     if (playlist.owner !== req.user._id) {
-        throw new ApiError(401, "you are not allowed to do this operation.");
+        throw new ApiError(401, "you are not allowed to update playlist.");
     }
 
     const video = await Video.findById(videoId);
@@ -155,14 +156,14 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 
 const updatePlaylist = asyncHandler(async (req, res) => {
     const { playlistId } = req.params;
-    const { name, description } = req.body;
+    const { name = "", description = "" } = req.body;
 
     if (!playlistId) {
         throw new ApiError(400, "please enter playlist id.");
     }
 
-    if (!name && !description) {
-        throw new ApiError(400, "please enter name or description.");
+    if (!name.trim() && !description.trim()) {
+        throw new ApiError(400, "please enter details.");
     }
 
     const playlist = await playlist.findById(playlistId);
@@ -175,11 +176,11 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "you are not allowed to update this playlist.");
     }
 
-    if (name) {
+    if (name.trim()) {
         playlist.name = name;
     }
 
-    if (description) {
+    if (description.trim()) {
         playlist.description = description;
     }
 

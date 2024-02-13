@@ -17,6 +17,7 @@ const videoSchema = new Schema({
     },
     discription: {
         type: String,
+        index: true,
     },
     views: {
         type: Number,
@@ -32,6 +33,7 @@ const videoSchema = new Schema({
     },
     owner: {
         type: Schema.Types.ObjectId,
+        ref: "User",
         required: true,
     }
 }, { timestamps: true });

@@ -24,4 +24,19 @@ const verifyToken = asyncHandler(async (req, res, next) => {
     next();
 });
 
-export { verifyToken };
+const tokenDecoder = asyncHandler(async (req, res, next) => {
+    const token = req.cookies?.accessToken || req.headers?.authorization?.replace("Bearer ", "");
+
+    if (token) {
+        const decodedToken = jsonwebtoken.verify(token, process.env.ACCESS_TOKEN_SECRET_KEY);
+
+        const user = await User.findById(decodedToken._id).select("+password");
+
+        if (user) {
+            req.user = user;
+        }
+    }
+    next();
+});
+
+export { verifyToken, tokenDecoder };

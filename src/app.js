@@ -12,9 +12,13 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
 //routs import
 import { userRouter } from './routs/user.routs.js';
+import { videoRouter } from './routs/video.routs.js';
+import { subscriptionRouter } from './routs/subscription.routs.js';
 
 //routs declaration
 app.use("/api/v1/user", userRouter);
+app.use("/api/v1/video", videoRouter);
+app.use("/api/v1/subscription", subscriptionRouter);
 app.use(globalErrorHandler);
 
 export { app }

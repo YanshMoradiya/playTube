@@ -3,25 +3,24 @@ import { Subscription } from "../models/subscription.model.js";
 import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponce.js"
+import { asyncHandler } from "../utils/asyncHandler.js";
+
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
-    const { isSubscribed } = req.body;
 
     try {
         if (!channelId) {
             throw new ApiError(400, "please enter channel id.");
         }
 
-        if (isSubscribed === undefined) {
-            throw new ApiError(400, "please enter subscription status.");
-        }
+        const isSubscribed = await Subscription.find({ channel: channelId, subscriber: req?.user._id });
 
-        if (channelId === req?.user._id) {
+        if (channelId === req?.user._id.toString()) {
             throw new ApiError(401, "you are owner of this channel.");
         }
 
-        if (isSubscribed) {
+        if (isSubscribed.length) {
             await Subscription.deleteOne({ channel: channelId, subscriber: req?.user._id });
 
             return res.status(200).json(new ApiResponse(200, "Unsubscribed."));

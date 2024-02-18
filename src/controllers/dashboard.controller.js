@@ -10,7 +10,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
     const videoData = await Video.aggregate([
         {
             $match: {
-                owner: new mongoose.Schema.Types.ObjectId(userId)
+                owner: new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -19,13 +19,14 @@ const getChannelStats = asyncHandler(async (req, res) => {
                 from: "likes",
                 localField: "_id",
                 foreignField: "video",
-                pipeline: [{
-                    $addFields: {
-                        Likes: {
-                            $size: "$Likes"
-                        }
-                    }
-                }]
+                pipeline: []
+            }
+        },
+        {
+            $addFields: {
+                Likes: {
+                    $size: { "$ifNull": ["$Likes", []] }
+                }
             }
         },
         {
@@ -39,7 +40,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 Subscribers: {
-                    $size: "$Subscribers"
+                    $size: { "$ifNull": ["$Subscribers", []] }
                 }
             }
         },
@@ -54,6 +55,9 @@ const getChannelStats = asyncHandler(async (req, res) => {
                 },
                 Videos: {
                     $sum: 1
+                },
+                Subscribers: {
+                    $first: "$Subscribers"
                 }
             }
         },
@@ -83,7 +87,9 @@ const getChannelVideos = asyncHandler(async (req, res) => {
 
     const videos = await Video.aggregate([
         {
-            $match: new mongoose.Schema.Types.ObjectId(userId)
+            $match: {
+                owner: new mongoose.Types.ObjectId(userId)
+            }
         },
         {
             $project: {

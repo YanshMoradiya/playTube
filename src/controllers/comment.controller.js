@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import { Comment } from "../models/comment.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { Video } from "../models/video.model.js";
+import { Tweet } from "../models/tweet.model.js";
+
 
 const getVideoComments = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
@@ -14,7 +18,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const comments = await Comment.aggregate([
         {
             $match: {
-                video: new mongoose.Schema.Types.ObjectId(videoId)
+                video: new mongoose.Types.ObjectId(videoId)
             }
         },
         {
@@ -27,7 +31,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
             $lookup: {
                 as: "owner",
                 from: "users",
-                localField: "video",
+                localField: "owner",
                 foreignField: "_id",
                 pipeline: [{
                     $project: {
@@ -37,40 +41,48 @@ const getVideoComments = asyncHandler(async (req, res) => {
             }
         },
         {
+            $lookup: {
+                as: "likes",
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+            }
+        },
+        {
+            $lookup: {
+                as: "dislikes",
+                from: "dislikes",
+                localField: "_id",
+                foreignField: "comment",
+            }
+        },
+        {
             $addFields: {
-                dateNow: new Date()
+                likes: {
+                    $size: "$likes"
+                },
+                dislikes: {
+                    $size: "$dislikes"
+                },
+                owner: "$owner.username"
             }
         },
         {
             $project: {
                 content: 1,
                 owner: 1,
-                years: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "year"
-                    }
-                },
-                months: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "month"
-                    }
-                },
-                days: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "day"
-                    }
-                },
+                likes: 1,
+                dislikes: 1,
+                createdAt: 1
             }
         }
     ]);
 
-    res.send(200).json(new ApiResponse(200, "comment fetched.", comments));
+    if (!comments) {
+        return res.status(200).json(new ApiResponse(200, "comment is not exist."));
+    }
+
+    return res.status(200).json(new ApiResponse(200, "comment fetched.", comments));
 });
 
 const getTweetComments = asyncHandler(async (req, res) => {
@@ -84,7 +96,7 @@ const getTweetComments = asyncHandler(async (req, res) => {
     const comments = await Comment.aggregate([
         {
             $match: {
-                tweet: tweetId
+                tweet: new mongoose.Types.ObjectId(tweetId)
             }
         },
         {
@@ -97,55 +109,58 @@ const getTweetComments = asyncHandler(async (req, res) => {
             $lookup: {
                 as: "owner",
                 from: "users",
-                localField: "tweet",
+                localField: "owner",
                 foreignField: "_id",
-                pipeline: [{
-                    $project: {
-                        username: 1,
-                    }
-                }]
+            }
+        },
+        {
+            $lookup: {
+                as: "likes",
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+            }
+        },
+        {
+            $lookup: {
+                as: "dislikes",
+                from: "dislikes",
+                localField: "_id",
+                foreignField: "comment",
             }
         },
         {
             $addFields: {
-                dateNow: new Date()
+                likes: {
+                    $size: "$likes"
+                },
+                dislikes: {
+                    $size: "$dislikes"
+                },
+                owner: "$owner.username"
             }
         },
         {
             $project: {
                 content: 1,
+                likes: 1,
+                dislikes: 1,
                 owner: 1,
-                years: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "year"
-                    }
-                },
-                months: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "month"
-                    }
-                },
-                days: {
-                    $dateDiff: {
-                        startDate: "$createdAt",
-                        endDate: "$dateNow",
-                        unit: "day"
-                    }
-                },
             }
         }
     ]);
 
-    res.send(200).json(new ApiResponse(200, "tweet fetched.", comments));
+    if (!comments) {
+        return res.status(200).json(new ApiResponse(200, "comment is not exist."));
+    }
+
+
+    res.status(200).json(new ApiResponse(200, "tweet fetched.", comments));
 });
 
 const addComment = asyncHandler(async (req, res) => {
-    const { videoId = "", content, tweetId = "" } = req.body;
-    const owner = req.user._id;
+    const { videoId, content, tweetId } = req.body;
+    const owner = req?.user._id;
 
     if (!owner) {
         throw new ApiError(400, "please enter owner id.");
@@ -155,17 +170,32 @@ const addComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "please enter content.");
     }
 
-    if (!videoId.trim() && !tweetId.trim()) {
+    if (!videoId && !tweetId) {
         throw new ApiError(400, "please enter video id.");
     }
 
-    const comment = await Comment.create({ owner, content, video: videoId, tweet: tweetId });
+    let comment;
+    if (tweetId) {
+        const tweet = await Tweet.findById(tweetId);
+        if (!tweet) {
+            throw new ApiError(400, "this tweet is not exist.");
+        }
+        comment = await Comment.create({ owner: owner, content: content, tweet: tweetId });
+    }
+
+    if (videoId) {
+        const video = await Video.findById(videoId);
+        if (!video) {
+            throw new ApiError(400, "this video is not exist.");
+        }
+        comment = await Comment.create({ owner: owner, content: content, video: videoId });
+    }
 
     if (!comment) {
         throw new ApiError(400, "comment is not created.something went wrong.");
     }
 
-    return res.status(200).json(new ApiResponse(200, "comment fetched successfully.", comment));
+    return res.status(200).json(new ApiResponse(200, "comment created successfully.", { _id: comment._id, content: comment.content }));
 });
 
 const updateComment = asyncHandler(async (req, res) => {
@@ -186,7 +216,7 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "comment not exist.");
     }
 
-    if (comment.owner !== req.user._id) {
+    if (comment.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(400, "you are not auther of this comment.");
     }
 
@@ -197,7 +227,7 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(500, "comment is not updated.something went wrong.");
     }
 
-    return res.status(200).json(new ApiResponse(200, "comment updated successfully.", updatedComment));
+    return res.status(200).json(new ApiResponse(200, "comment updated successfully."));
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
@@ -213,8 +243,8 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "comment not exist.");
     }
 
-    if (comment.owner !== request.user._id) {
-        throw new ApiError(400, "you are not auther of this comment.");
+    if (comment.owner.toString() !== req?.user._id.toString()) {
+        throw new ApiError(400, "you are not allowed to delete this comment.");
     }
 
     const status = await Comment.findByIdAndDelete(commentId);

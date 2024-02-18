@@ -5,16 +5,14 @@ import { Video } from "./../models/video.model.js";
 import { Comment } from "./../models/comment.model.js";
 import { Tweet } from "./../models/tweet.model.js";
 import mongoose from "mongoose";
+import { Like } from "../models/like.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+
 
 const toggleVideoDislike = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
-    const { isDisiked } = req.body;
 
     try {
-        if (isDisiked === undefined) {
-            throw new ApiError(400, "please enter dislike status.");
-        }
-
         if (!videoId) {
             throw new ApiError(400, "Please enter video id.");
         }
@@ -25,7 +23,9 @@ const toggleVideoDislike = asyncHandler(async (req, res) => {
             throw new ApiError(400, "video is not found.");
         }
 
-        if (isDisiked) {
+        const isDisiked = await Dislike.find({ dislikedBy: req?.user._id, video: videoId });
+
+        if (isDisiked.length) {
             const undislike = await Dislike.findOneAndDelete({ dislikedBy: req?.user._id, video: videoId });
 
             if (!undislike) {
@@ -34,6 +34,8 @@ const toggleVideoDislike = asyncHandler(async (req, res) => {
 
             return res.status(200).json(new ApiResponse(200, "remove dislike from this video."));
         } else {
+            await Like.findOneAndDelete({ likedBy: req?.user._id, video: videoId });
+
             const dislike = await Dislike.create({ dislikedBy: req?.user._id, video: videoId });
 
             if (!dislike) {
@@ -49,13 +51,8 @@ const toggleVideoDislike = asyncHandler(async (req, res) => {
 
 const toggleCommentDislike = asyncHandler(async (req, res) => {
     const { commentId } = req.params;
-    const { isDisliked } = req.body;
 
     try {
-        if (isDisliked === undefined) {
-            throw new ApiError(400, "please enter like status.");
-        }
-
         if (!commentId) {
             throw new ApiError(400, "Please enter comment id.");
         }
@@ -66,7 +63,9 @@ const toggleCommentDislike = asyncHandler(async (req, res) => {
             throw new ApiError(400, "comment is not found.");
         }
 
-        if (isDisliked) {
+        const isDisliked = await Dislike.find({ dislikedBy: req?.user._id, comment: commentId });
+
+        if (isDisliked.length) {
             const undislike = await Dislike.findOneAndDelete({ dislikedBy: req?.user._id, comment: commentId });
 
             if (!undislike) {
@@ -75,6 +74,8 @@ const toggleCommentDislike = asyncHandler(async (req, res) => {
 
             return res.status(200).json(new ApiResponse(200, "remove like from this comment."));
         } else {
+            await Like.findOneAndDelete({ likedBy: req?.user._id, comment: commentId });
+
             const dislike = await Dislike.create({ dislikedBy: req?.user._id, comment: commentId });
 
             if (!dislike) {
@@ -88,15 +89,10 @@ const toggleCommentDislike = asyncHandler(async (req, res) => {
     }
 });
 
-const toggleTweetLike = asyncHandler(async (req, res) => {
+const toggleTweetDisike = asyncHandler(async (req, res) => {
     const { tweetId } = req.params;
-    const { isDisliked } = req.body;
 
     try {
-        if (isDisliked === undefined) {
-            throw new ApiError(400, "please enter dislike status.");
-        }
-
         if (!tweetId) {
             throw new ApiError(400, "Please enter tweet id.");
         }
@@ -107,7 +103,9 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
             throw new ApiError(400, "tweet is not found.");
         }
 
-        if (isDisliked) {
+        const isDisliked = await Dislike.find({ dislikedBy: req?.user._id, tweet: tweetId });
+
+        if (isDisliked.length) {
             const undislike = await Dislike.findOneAndDelete({ dislikedBy: req?.user._id, tweet: tweetId });
 
             if (!undislike) {
@@ -116,7 +114,9 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
             return res.status(200).json(new ApiResponse(200, "remove dislike from this tweet."));
         } else {
-            const dislike = await isDisliked.create({ dislikedBy: req?.user._id, tweet: tweetId });
+            await Like.findOneAndDelete({ likedBy: req?.user._id, tweet: tweetId });
+
+            const dislike = await Dislike.create({ dislikedBy: req?.user._id, tweet: tweetId });
 
             if (!dislike) {
                 throw new ApiError(500, "unable to do this operation.something went wrong.");
@@ -134,7 +134,10 @@ const getDislikedVideos = asyncHandler(async (req, res) => {
         const dislikedVideos = await Dislike.aggregate([
             {
                 $match: {
-                    dislikedBy: new mongoose.Schema.Types.ObjectId(req?.user._id)
+                    dislikedBy: new mongoose.Types.ObjectId(req?.user._id),
+                    video: {
+                        $exists: true
+                    }
                 }
             },
             {
@@ -182,7 +185,7 @@ const getDislikedVideos = asyncHandler(async (req, res) => {
 
 export {
     toggleCommentDislike,
-    toggleTweetLike,
+    toggleTweetDisike,
     toggleVideoDislike,
     getDislikedVideos
 }

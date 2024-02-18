@@ -2,8 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 const commentSchema = new Schema({
     content: {
-        type: Schema.Types.ObjectId,
-        ref: "Comment",
+        type: String,
         required: true
     },
     tweet: {

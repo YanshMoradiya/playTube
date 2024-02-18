@@ -1,9 +1,13 @@
+import mongoose from "mongoose";
 import { Tweet } from "../models/tweet.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "./../utils/ApiError.js";
 import { ApiResponse } from "./../utils/ApiResponce.js";
 
+
 const createTweet = asyncHandler(async (req, res) => {
-    const { content, ownerId } = req.body;
+    const { content } = req.body;
+    const ownerId = req?.user._id;
 
     if (!content) {
         throw new ApiError(400, "please enter something!");
@@ -19,79 +23,105 @@ const createTweet = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Tweets cannot be created.something went wrong!");
     }
 
-    return res.status(200).json(new ApiResponse(200, "tweets created successfully.", tweet));
+    return res.status(200).json(new ApiResponse(200, "tweets created successfully.", tweet._id));
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
-    const { ownerId } = req.body;
+    const { page = 1, limit = 10, sortBy, sortType } = req.query;
+    const sortOption = {};
+    sortOption[sortBy] = sortType === "desc" ? "-1" : "1";
 
-    if (!ownerId) {
-        throw new ApiError(400, "please enter owner ID.");
-    }
+    const { userId } = req.params;
 
-    const tweets = await Tweet.aggregate([
-        {
-            $match: {
-                owner: ownerId,
-            }
-        },
-        {
-            $lookup: {
-                from: "likes",
-                as: "likeCount",
-                localField: "_id",
-                foreignField: "tweet"
-            }
-        },
-        {
-            $addFields: {
-                like: {
-                    $size: "$likeCount"
+    try {
+        if (!userId) {
+            throw new ApiError(400, "please enter owner ID.");
+        }
+
+        const tweets = await Tweet.aggregate([
+            {
+                $match: {
+                    owner: new mongoose.Types.ObjectId(userId),
+                }
+            },
+            {
+                $skip: (page - 1) * limit
+            },
+            {
+                $limit: limit
+            },
+            {
+                $lookup: {
+                    from: "likes",
+                    as: "like",
+                    localField: "_id",
+                    foreignField: "tweet"
+                }
+            },
+            {
+                $lookup: {
+                    from: "dislikes",
+                    as: "dislike",
+                    localField: "_id",
+                    foreignField: "tweet"
+                }
+            },
+            {
+                $addFields: {
+                    like: {
+                        $size: "$like"
+                    },
+                    dislike: {
+                        $size: "$dislike"
+                    }
                 }
             }
+        ]);
+
+        if (!tweets.length) {
+            return res.status(200).json(new ApiResponse(200, "Tweet is not exist."));
         }
-    ]);
 
-    if (!tweets.length) {
-        throw new ApiError(500, "Tweets are not fetched.something went wrong.");
+        return res.status(200).json(new ApiResponse(200, "Tweets fetched successfully.", tweets));
+    } catch (error) {
+        throw new ApiError(error.status || 500, error.message || "Tweets are not fetched.something went wrong.");
     }
-
-    return res.status(200).json(new ApiResponse(200, "Tweets fetched successfully.", tweets));
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
-    const { tweetId, content } = req.body;
+    const { content } = req.body;
+    const { tweetId } = req.params;
 
-    if (!tweetId) {
-        throw new ApiError(400, "please enter tweet id.");
+    try {
+        if (!tweetId) {
+            throw new ApiError(400, "please enter tweet id.");
+        }
+
+        if (!content) {
+            throw new ApiError(400, "please enter content.");
+        }
+
+        const tweet = await Tweet.findById(tweetId);
+
+        if (!tweet) {
+            throw new ApiError(400, "tweet is not exist.");
+        }
+
+        if (tweet.owner.toString() !== req?.user._id.toString()) {
+            throw new ApiError(401, "you are not allowed to update this tweet.");
+        }
+
+        tweet.content = content;
+        const updatedTweet = await tweet.save();
+
+        return res.status(200).json(new ApiResponse(200, "tweet updated successfully.", updatedTweet));
+    } catch (error) {
+        throw new ApiError(error.status || 500, error.message || "tweet is not updated.something went wrong.");
     }
-
-    if (!content) {
-        throw new ApiError(400, "please enter content.");
-    }
-
-    const tweet = await Tweet.findById(tweetId);
-
-    if (!tweet) {
-        throw new ApiError(400, "tweet is not exist.");
-    }
-
-    if (tweet.owner !== req?.user._id) {
-        throw new ApiError(401, "you are not allowed to update this tweet.");
-    }
-
-    tweet.content = content;
-    const updatedTweet = await tweet.save();
-
-    if (!updatedTweet) {
-        throw new ApiError(500, "tweet is not updated.something went wrong.");
-    }
-
-    return res.status(200).json(new ApiResponse(200, "tweet updated successfully.", updatedTweet));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    const { tweetId } = req.body;
+    const { tweetId } = req.params;
 
     if (!tweetId) {
         throw new ApiError(400, "please enter tweet id.");
@@ -103,8 +133,8 @@ const deleteTweet = asyncHandler(async (req, res) => {
         throw new ApiError(400, "tweet is not exist.");
     }
 
-    if (tweet.owner !== req?.user._id) {
-        throw new ApiError(400, "you are not allowed to delete this tweet.");
+    if (tweet.owner.toString() !== req?.user._id.toString()) {
+        throw new ApiError(401, "you are not allowed to delete this tweet.");
     }
 
     const deletedTweet = await Tweet.findByIdAndDelete(tweetId);
@@ -114,6 +144,6 @@ const deleteTweet = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(new ApiResponse(200, "tweet deleted successfully."));
-})
+});
 
 export { createTweet, getUserTweets, updateTweet, deleteTweet };

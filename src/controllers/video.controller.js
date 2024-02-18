@@ -11,10 +11,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const sortOption = {};
     sortOption[sortBy] = sortType === "desc" ? "-1" : "1";
 
-    if (!query && !userId) {
-        throw new ApiError(400, "Please enter userId or querystring.");
-    }
-
     const pipeline = [];
 
     if (query) {
@@ -24,6 +20,32 @@ const getAllVideos = asyncHandler(async (req, res) => {
                     $search: query
                 }
             }
+        },
+            {
+                $skip: (page - 1) * limit
+            }, {
+            $limit: limit
+        }, {
+            $lookup: {
+                from: "users",
+                as: "owner",
+                localField: "owner",
+                foreignField: "_id",
+                pipeline: [{
+                    $project: {
+                        fullName: 1,
+                        username: 1,
+                    }
+                }]
+            }
+        }, {
+            $project: {
+                thumbnail: 1,
+                title: 1,
+                duration: 1,
+                owner: 1,
+                createdAt: 1
+            }
         });
     }
 
@@ -32,35 +54,42 @@ const getAllVideos = asyncHandler(async (req, res) => {
             $match: {
                 owner: new mongoose.Types.ObjectId(userId)
             }
+        },
+            {
+                $skip: (page - 1) * limit
+            }, {
+            $limit: limit
+        }, {
+            $lookup: {
+                from: "users",
+                as: "owner",
+                localField: "owner",
+                foreignField: "_id",
+                pipeline: [{
+                    $project: {
+                        fullName: 1,
+                        username: 1,
+                    }
+                }]
+            }
+        }, {
+            $project: {
+                thumbnail: 1,
+                title: 1,
+                duration: 1,
+                owner: 1,
+                createdAt: 1
+            }
         });
     }
 
-    pipeline.push({
-        $skip: (page - 1) * limit
-    }, {
-        $limit: limit
-    }, {
-        $lookup: {
-            from: "users",
-            as: "owner",
-            localField: "owner",
-            foreignField: "_id",
-            pipeline: [{
-                $project: {
-                    fullName: 1,
-                    username: 1,
-                }
-            }]
-        }
-    }, {
-        $project: {
-            thumbnail: 1,
-            title: 1,
-            duration: 1,
-            owner: 1,
-            createdAt: 1
-        }
-    });
+    if (!query && !userId) {
+        pipeline.push({
+            $sample: {
+                size: limit
+            }
+        });
+    }
 
     const videos = await Video.aggregate(pipeline);
 
@@ -112,7 +141,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(500, "video is not uploaded.something went wrong!");
     }
 
-    return res.status(200).json(new ApiResponse(200, "video uploaded successfully."));
+    return res.status(200).json(new ApiResponse(200, "video uploaded successfully.", video._id));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
@@ -125,23 +154,23 @@ const getVideoById = asyncHandler(async (req, res) => {
     const video = await Video.aggregate([
         {
             $match: {
-                "_id": new mongoose.Types.ObjectId(videoId)
+                _id: new mongoose.Types.ObjectId(videoId)
             }
         },
         {
             $lookup: {
                 from: "likes",
-                as: "Likes",
+                as: "like",
                 localField: "_id",
-                foreignField: "videos"
+                foreignField: "video"
             }
         },
         {
             $lookup: {
                 from: "dislikes",
-                as: "Dislikes",
+                as: "dislike",
                 localField: "_id",
-                foreignField: "videos"
+                foreignField: "video"
             }
         },
         {
@@ -180,11 +209,11 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
         {
             $addFields: {
-                Likes: {
-                    $size: "$Likes"
+                like: {
+                    $size: "$like"
                 },
-                Dislikes: {
-                    $size: "$Dislikes"
+                dislike: {
+                    $size: "$dislike"
                 }
             }
         }

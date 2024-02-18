@@ -36,6 +36,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
+    const { limit = 10, page = 1 } = req.params;
 
     try {
         if (!channelId) {
@@ -45,8 +46,14 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         const channelSunscriber = await Subscription.aggregate([
             {
                 $match: {
-                    channel: new mongoose.Schema.Types.ObjectId(channelId)
+                    channel: new mongoose.Types.ObjectId(channelId)
                 }
+            },
+            {
+                $skip: (page - 1) * limit
+            },
+            {
+                $limit: limit
             },
             {
                 $lookup: {
@@ -77,6 +84,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
 const getSubscribedChannels = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
+    const { limit = 10, page = 1 } = req.params;
 
     try {
         if (!channelId) {
@@ -86,8 +94,13 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
         const subscribedChannels = await Subscription.aggregate([
             {
                 $match: {
-                    subscriber: new mongoose.Schema.Types.ObjectId(channelId)
+                    subscriber: new mongoose.Types.ObjectId(channelId)
                 }
+            },
+            {
+                $skip: (page - 1) * limit
+            }, {
+                $limit: limit
             },
             {
                 $lookup: {

@@ -105,7 +105,7 @@ const login = asyncHandler(async (req, res, next) => {
     };
     updatedUser.refreshToken = undefined;
     updatedUser.password = undefined;
-    res.status(200).cookie("refreshToken", refreshToken, option).cookie("accessToken", accessToken, option).json(new ApiResponse(200, "loged in successfully.", { updatedUser, accessToken, refreshToken }));
+    res.status(200).cookie("refreshToken", refreshToken, option).cookie("accessToken", accessToken, option).json(new ApiResponse(200, "loged in successfully.", { user: updatedUser, accessToken, refreshToken }));
 });
 
 const logOut = asyncHandler(async (req, res) => {

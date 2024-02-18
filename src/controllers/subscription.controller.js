@@ -70,6 +70,11 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
                     }]
                 }
             },
+            {
+                $project: {
+                    userDetails: 1
+                }
+            }
         ]);
 
         if (!channelSunscriber) {
@@ -117,6 +122,11 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
                     }]
                 }
             },
+            {
+                $project: {
+                    channelDetails: 1
+                }
+            }
         ]);
 
         if (!subscribedChannels) {

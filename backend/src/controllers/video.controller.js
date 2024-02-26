@@ -135,7 +135,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(500, "video is not uploaded.something went wrong.");
     }
 
-    const video = await Video.create({ title, description, owner: req?.user._id, videoFile: cloudinaryThumbnailFile.url, thumbnail: cloudinaryVideoFile.url, duration: cloudinaryVideoFile.duration });
+    const video = await Video.create({ title, description, owner: req?.user._id, thumbnail: cloudinaryThumbnailFile.url, videoFile: cloudinaryVideoFile.url, duration: cloudinaryVideoFile.duration });
 
     if (!video) {
         throw new ApiError(500, "video is not uploaded.something went wrong!");
@@ -219,9 +219,10 @@ const getVideoById = asyncHandler(async (req, res) => {
         }
     ]);
 
-    if (!video) {
+    if (!video.length) {
         throw new ApiError(400, "video is not found.");
     };
+    video[0].owner = video[0].owner[0];
 
     return res.status(200).json(new ApiResponse(200, "video fetched successfully.", video[0]));
 });

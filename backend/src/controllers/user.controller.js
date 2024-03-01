@@ -28,6 +28,8 @@ const registerUser = asyncHandler(async (req, res) => {
             throw new ApiError(400, "All fields are required.");
         }
 
+        console.log(req.files);
+
         if (!email.includes("@")) {
             throw new ApiError(400, "enter valid email address.");
         }

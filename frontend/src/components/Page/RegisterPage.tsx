@@ -2,8 +2,8 @@ import Register from "../Register"
 
 function RegisterPage() {
   return (
-    <div className="h-[100%] flex justify-center items-center bg-[#7b312D]">
-        <Register/>
+    <div className="h-[115%] flex justify-center items-center bg-[#7b312D]">
+      <Register />
     </div>
   )
 }

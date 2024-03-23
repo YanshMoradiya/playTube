@@ -5,7 +5,7 @@ import { uploadCloudinary, deleteCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import fs from 'fs';
 import jwt from "jsonwebtoken";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 
 const generateTokens = async (user) => {
     try {
@@ -27,8 +27,6 @@ const registerUser = asyncHandler(async (req, res) => {
         if ([email, username, password, fullName].some((item) => item?.trim() === "")) {
             throw new ApiError(400, "All fields are required.");
         }
-
-        console.log(req.files);
 
         if (!email.includes("@")) {
             throw new ApiError(400, "enter valid email address.");
@@ -84,13 +82,22 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res, next) => {
-    const { email, password, username } = req.body;
+    const { email, password } = req.body;
 
-    if (!email && !username) {
+    if (!email) {
         throw new ApiError(400, "Please enter email or username.");
     };
 
-    let user = await User.findOne({ $or: [{ email }, { username }] }).select("+password +refreshToken");
+    if (!password) {
+        throw new ApiError(400, "Please enter password.");
+    }
+
+    let user = await User.findOne({ $or: [{ email }, { username: email }] }).select("+password +refreshToken");
+
+    if (!user) {
+        throw new ApiError(401, "User is not exist.");
+    }
+
     const isPasswordValid = await user.isPasswordCorrect(password);
 
     if (!isPasswordValid) {
@@ -107,7 +114,7 @@ const login = asyncHandler(async (req, res, next) => {
     };
     updatedUser.refreshToken = undefined;
     updatedUser.password = undefined;
-    res.status(200).cookie("refreshToken", refreshToken, option).cookie("accessToken", accessToken, option).json(new ApiResponse(200, "loged in successfully.", { user: updatedUser, accessToken, refreshToken }));
+    return res.status(200).cookie("refreshToken", refreshToken, option).cookie("accessToken", accessToken, option).json(new ApiResponse(200, "loged in successfully.", { user: updatedUser, accessToken, refreshToken }));
 });
 
 const logOut = asyncHandler(async (req, res) => {
@@ -127,7 +134,6 @@ const logOut = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
-
     if (!incomingRefreshToken) {
         throw new ApiError(401, "unouthorized request.");
     }
@@ -182,8 +188,55 @@ const changeCurrentUserPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-    req.user.password = undefined;
-    res.status(200).json(new ApiResponse(200, "Current user fetched Successfully", req.user));
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                _id: req.user._id
+            }
+        },
+        {
+            // for subscriber data
+            $lookup: {
+                as: "subscriberData",
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel"
+            }
+        },
+        {
+            // subscribed to data
+            $lookup: {
+                as: "subscribedToData",
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: {
+                    $size: "$subscriberData"
+                },
+                subscribedToCount: {
+                    $size: "$subscribedToData"
+                }
+            }
+        },
+        {
+            $project: {
+                "username": 1,
+                "email": 1,
+                "fullName": 1,
+                "avatar": 1,
+                "coverImage": 1,
+                "subscriberCount": 1,
+                "subscribedToCount": 1,
+                "createdAt": 1
+            }
+        }
+    ]);
+    res.status(200).json(new ApiResponse(200, "Current user fetched Successfully", channel[0]));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -334,7 +387,8 @@ const getChannelProfile = asyncHandler(async (req, res) => {
                 "coverImage": 1,
                 "subscriberCount": 1,
                 "subscribedToCount": 1,
-                "isSubscribed": 1
+                "isSubscribed": 1,
+                "createdAt": 1
             }
         }
     ]);

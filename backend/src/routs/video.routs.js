@@ -1,11 +1,13 @@
 import { Router } from "express";
-import { publishAVideo, getVideoById, updateVideo, togglePublishStatus, getAllVideos } from "../controllers/video.controller.js";
+import { publishAVideo, getVideoById, updateVideo, togglePublishStatus, getAllVideos, getUsersVideo } from "../controllers/video.controller.js";
 import { verifyToken, tokenDecoder } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 const videoRouter = Router();
 
 videoRouter.route("/get-videos").get(getAllVideos);
 videoRouter.route("/get-video-by-id/:videoId").get(tokenDecoder, getVideoById);
+videoRouter.route("/get-users-video/:ownerId").get(getUsersVideo);
+
 
 //secure route
 videoRouter.route("/publish-video").post(verifyToken, upload.fields([{ name: "video", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]), publishAVideo);

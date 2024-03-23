@@ -5,9 +5,10 @@ import { Video } from "../models/video.model.js";
 import mongoose from "mongoose";
 import { uploadCloudinary, deleteCloudinary } from "./../utils/cloudinary.js";
 import fs from "fs";
+import { User } from "../models/user.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    const { page = 1, limit = 5, query, sortBy, sortType, userId } = req.query
     const sortOption = {};
     sortOption[sortBy] = sortType === "desc" ? "-1" : "1";
 
@@ -35,18 +36,21 @@ const getAllVideos = asyncHandler(async (req, res) => {
                     $project: {
                         fullName: 1,
                         username: 1,
+                        avatar: 1
                     }
                 }]
             }
-        }, {
-            $project: {
-                thumbnail: 1,
-                title: 1,
-                duration: 1,
-                owner: 1,
-                createdAt: 1
-            }
-        });
+        },
+            // {
+            //     $project: {
+            //         thumbnail: 1,
+            //         title: 1,
+            //         duration: 1,
+            //         owner: 1,
+            //         createdAt: 1
+            //     }
+            // }
+        );
     }
 
     if (!query && userId) {
@@ -69,18 +73,21 @@ const getAllVideos = asyncHandler(async (req, res) => {
                     $project: {
                         fullName: 1,
                         username: 1,
+                        avatar: 1
                     }
                 }]
             }
-        }, {
-            $project: {
-                thumbnail: 1,
-                title: 1,
-                duration: 1,
-                owner: 1,
-                createdAt: 1
-            }
-        });
+        },
+            //  {
+            //     $project: {
+            //         thumbnail: 1,
+            //         title: 1,
+            //         duration: 1,
+            //         owner: 1,
+            //         createdAt: 1
+            //     }
+            // }
+        );
     }
 
     if (!query && !userId) {
@@ -88,7 +95,22 @@ const getAllVideos = asyncHandler(async (req, res) => {
             $sample: {
                 size: limit
             }
-        });
+        },
+            {
+                $lookup: {
+                    from: "users",
+                    as: "owner",
+                    localField: "owner",
+                    foreignField: "_id",
+                    pipeline: [{
+                        $project: {
+                            fullName: 1,
+                            username: 1,
+                            avatar: 1
+                        }
+                    }]
+                }
+            });
     }
 
     const videos = await Video.aggregate(pipeline);
@@ -105,48 +127,57 @@ const getAllVideos = asyncHandler(async (req, res) => {
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
-    const { title, description = "" } = req.body;
-    const videoFile = req.files?.video[0].path;
-    const thumbnail = req.files?.thumbnail[0].path;
-
-    if (!videoFile && !thumbnail) {
-        throw new ApiError(400, "please enter video file and thumbnail.");
-    }
-
-    if (!title) {
-        throw new ApiError(400, "please enter title.");
-    }
-
-    let cloudinaryThumbnailFile = undefined, cloudinaryVideoFile = undefined;
-
     try {
-        cloudinaryThumbnailFile = await uploadCloudinary(thumbnail);
-        cloudinaryVideoFile = await uploadCloudinary(videoFile);
+        const { title, description = "" } = req.body;
+        const videoFile = req.files?.video[0].path;
+        const thumbnail = req.files?.thumbnail[0].path;
+
+        if (!videoFile && !thumbnail) {
+            throw new ApiError(400, "please enter video file and thumbnail.");
+        }
+
+        if (!title) {
+            throw new ApiError(400, "please enter title.");
+        }
+
+        let cloudinaryThumbnailFile = undefined, cloudinaryVideoFile = undefined;
+
+        try {
+            cloudinaryThumbnailFile = await uploadCloudinary(thumbnail);
+            cloudinaryVideoFile = await uploadCloudinary(videoFile);
+        } catch (error) {
+            if (cloudinaryThumbnailFile) {
+                unlinkSync(videoFile);
+                await deleteCloudinary(cloudinaryThumbnailFile, "image");
+            }
+            if (cloudinaryVideoFile) {
+                unlinkSync(thumbnail);
+                await deleteCloudinary(cloudinaryVideoFile, "video");
+            }
+            console.log(error)
+            throw new ApiError(500, "video is not uploaded.something went wrong.");
+        }
+        const video = await Video.create({ title, description, owner: req?.user._id, thumbnail: cloudinaryThumbnailFile.url, videoFile: cloudinaryVideoFile.url, duration: cloudinaryVideoFile.duration });
+
+        if (!video) {
+            throw new ApiError(500, "video is not uploaded.something went wrong!");
+        }
+
+        return res.status(200).json(new ApiResponse(200, "video uploaded successfully.", video._id));
     } catch (error) {
-        if (cloudinaryThumbnailFile) {
-            unlinkSync(videoFile);
-            await deleteCloudinary(cloudinaryThumbnailFile, "image");
+        console.log(error);
+        if (req.files?.video[0].path) {
+            fs.unlinkSync(req.files?.video[0].path);
         }
-        if (cloudinaryVideoFile) {
-            unlinkSync(thumbnail);
-            await deleteCloudinary(cloudinaryVideoFile, "video");
+        if (req.files?.thumbnail[0].path) {
+            fs.unlinkSync(req.files?.thumbnail[0].path);
         }
-        console.log(error)
-        throw new ApiError(500, "video is not uploaded.something went wrong.");
+        throw new ApiError(error.statusCode, error.message);
     }
-
-    const video = await Video.create({ title, description, owner: req?.user._id, thumbnail: cloudinaryThumbnailFile.url, videoFile: cloudinaryVideoFile.url, duration: cloudinaryVideoFile.duration });
-
-    if (!video) {
-        throw new ApiError(500, "video is not uploaded.something went wrong!");
-    }
-
-    return res.status(200).json(new ApiResponse(200, "video uploaded successfully.", video._id));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
-
     if (!videoId) {
         throw new ApiError(500, "please enter a video id.");
     }
@@ -214,6 +245,12 @@ const getVideoById = asyncHandler(async (req, res) => {
                 },
                 dislike: {
                     $size: "$dislike"
+                },
+                isLiked: {
+                    $cond: [req?.user !== undefined, { $in: [new mongoose.Types.ObjectId(req?.user?._id), "$like.likedBy"] }, false]
+                },
+                isDisLiked: {
+                    $cond: [req?.user !== undefined, { $in: [new mongoose.Types.ObjectId(req?.user?._id), "$dislike.dislikedBy"] }, false]
                 }
             }
         }
@@ -223,7 +260,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "video is not found.");
     };
     video[0].owner = video[0].owner[0];
-
     return res.status(200).json(new ApiResponse(200, "video fetched successfully.", video[0]));
 });
 
@@ -247,7 +283,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     if (req?.user._id.toString() !== video.owner.toString()) {
-        throw new ApiError("401", "You are not allowed to update this video.");
+        throw new ApiError(401, "You are not allowed to update this video.");
     }
 
     if (title) {
@@ -302,5 +338,31 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, `video is ${updatedVideo.isPublished ? 'published' : 'unpublished'} successfully.`));
 });
 
-export { getAllVideos, getVideoById, publishAVideo, togglePublishStatus, updateVideo };
+const getUsersVideo = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 5, query, sortBy, sortType, userId } = req.query
+    const sortOption = {};
+    sortOption[sortBy] = sortType === "desc" ? "-1" : "1";
+    const { ownerId } = req.params;
+    if (!ownerId) {
+        throw new ApiError("401", "please provide ownerId");
+    }
+    const videos = await Video.aggregate([{
+        $match: {
+            owner: new mongoose.Types.ObjectId(ownerId)
+        }
+    },
+    {
+        $skip: (page - 1) * limit
+    }, {
+        $limit: limit
+    }]);
+
+    if (!videos.length) {
+        throw new ApiError(400, "video is not found.");
+    };
+
+    return res.status(200).json(new ApiResponse(200, "video fetched successfully!", videos));
+});
+
+export { getAllVideos, getVideoById, publishAVideo, togglePublishStatus, updateVideo, getUsersVideo };
 

@@ -6,7 +6,7 @@ import themeSlice from "./themeSlice";
 const store = configureStore({
     reducer: {
         auth : authSlice,
-        theme : themeSlice
+        theme : themeSlice,
     },
 });
 

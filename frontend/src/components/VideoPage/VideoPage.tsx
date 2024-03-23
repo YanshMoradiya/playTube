@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import Video from '../Video';
+import Video from './Video';
 
 function VideoPage() {
   const { videoId } = useParams();

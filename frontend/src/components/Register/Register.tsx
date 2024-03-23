@@ -1,6 +1,7 @@
 import axios from "axios";
+import { useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface FormInputRegister {
     email: string;
@@ -13,23 +14,28 @@ interface FormInputRegister {
 }
 
 function Register() {
-
+    const [error, setError] = useState("");
     const { register, handleSubmit, formState: { errors }, reset } = useForm<FormInputRegister>();
+    const navigate = useNavigate();
     const onSubmit: SubmitHandler<FormInputRegister> = async (data) => {
         try {
-            console.log(data.avatar);
-            // let formDataForAvatar = new FormData();
-            // formDataForAvatar.append("file", data.avatar);
-            // let formDataForCoverImage = new FormData();
-            // formDataForCoverImage.append("file", data.coverImage);
-            // console.log(formDataForAvatar, formDataForCoverImage);
-            await axios.post('/api/v1/user/register', { email: data.email, username: data.username, password: data.password, fullName: data.fullName, avatar: data.avatar[0], coverImage: data.coverImage[0] })
+            const formData = new FormData();
+            formData.append("email", data.email);
+            formData.append("password", data.password);
+            formData.append("username", data.username);
+            formData.append("fullName", data.fullName);
+            formData.append("avatar", data.avatar[0]);
+            formData.append("coverImage", data.coverImage[0]);
+            await axios.post('/api/v1/user/register', formData).then(() => navigate("/login"));
         } catch (error: any) {
             console.log(error.response.data.message);
+            setError(error.response.data.message);
         }
     };
+
     return (
-        <div className="bg-[#2e8286] px-[36px] py-[40px] rounded-[20px] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-[#87c0c3]">
+        <div className="bg-[#2e8286] px-[36px] py-[40px] rounded-[20px] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-[#87c0c3] ">
+            <span className="w-[100%] text-red-800 font-semibold text-2xl text-center">{error}</span>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col justify-start items-baseline bg-[#2e8286] gap-[10px]">
                 <div className="flex flex-col gap-[5px]">
                     <label>Email</label>
@@ -69,7 +75,7 @@ function Register() {
                 <div className="">already have an account? <Link to="/login" className="font-bold text-blue-700">Log in</Link></div>
             </form>
         </div>
-    )
+    );
 }
 
 export default Register;

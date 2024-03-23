@@ -32,7 +32,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
                 throw new ApiError(500, "unable to do this operation.something went wrong.");
             }
 
-            return res.status(200).json(new ApiResponse(200, "remove like from this video."));
+            return res.status(200).json(new ApiResponse(200, "remove like from this video.", { status: "removeLiked" }));
         } else {
             await Dislike.findOneAndDelete({ dislikedBy: req?.user._id, video: videoId });
 
@@ -42,7 +42,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
                 throw new ApiError(500, "unable to do this operation.something went wrong.");
             }
 
-            return res.status(200).json(new ApiResponse(200, "like this video."));
+            return res.status(200).json(new ApiResponse(200, "like this video.", { status: "addLiked" }));
         }
     } catch (error) {
         throw new ApiError(error.status || 500, error.message || "something went wrong.");

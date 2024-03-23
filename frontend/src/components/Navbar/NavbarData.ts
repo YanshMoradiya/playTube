@@ -36,6 +36,12 @@ export const navbarData: NavbarItem[] = [
         title: "Subscriptions",
         cName: "navtext",
         icon: "people-sharp",
+    },
+    {
+        path: "/profile",
+        title: "Profile",
+        cName: "navtext",
+        icon: "person"
     }
 ];
 

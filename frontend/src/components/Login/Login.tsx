@@ -39,7 +39,7 @@ function Login({ closeButton = false }: { closeButton: boolean }) {
         {error.length != 0 && <span className="text-red-700">{error}</span>}
         <div className="flex flex-col gap-[5px]">
           <label>Email/Username</label>
-          <input {...register("email", { pattern: { value: /@/, message: "Please enter valid email address." }, required: { value: true, message: "email or username name is required." } })} type="text" placeholder="Enter email or username." className="rounded-[5px] bg-[#075154] p-[3px] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-[#87c0c3] w-[280px]" />
+          <input {...register("email", { required: { value: true, message: "email or username name is required." } })} type="text" placeholder="Enter email or username." className="rounded-[5px] bg-[#075154] p-[3px] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-[#87c0c3] w-[280px]" />
           {errors.email && <span className="text-red-400">{errors.email?.message}</span>}
         </div>
         <div className="flex flex-col gap-[5px]">

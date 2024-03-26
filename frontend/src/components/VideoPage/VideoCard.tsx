@@ -19,7 +19,7 @@ function VideoCard({ video }: { video: any }) {
     }
 
     return (
-        <div className="m-2 w-[400px] max-[470px]:w-[300px] bg-red-200 h-[300px] max-[470px]:h-[270px] flex items-center justify-center flex-col rounded-lg" >
+        <div className="m-2 w-[400px] max-[470px]:w-[300px] bg-red-200 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] h-[300px] max-[470px]:h-[270px] flex items-center justify-center flex-col rounded-lg" >
             <Link to={`/video/${video._id}`}>
                 <div className="flex items-center justify-center w-[360px] max-[470px]:w-[260px] h-[200px] max-[470px]:h-[170px] relative">
                     <img src={video?.thumbnail} alt="video thumbnail." className="w-[100%] h-[100%] rounded-lg" />

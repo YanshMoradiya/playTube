@@ -35,29 +35,28 @@ function ProfilePage() {
                     <img src={data?.avatar} alt="avatar image" className="w-[100px] h-[100px] rounded-full" />
                 </div>
                 <div className="m-[25px]">
-                    <h1>fullName : {data?.fullName}</h1>
-                    <h2>username : {data?.username}</h2>
-                    <h2>email : {data?.email}</h2>
-                    <h2>createdAt : {data?.createdAt?.substring(0, 10)}</h2>
-                    <h2>subscribedTo : {data?.subscribedToCount}</h2>
+                    <h1>fullName  : {data?.fullName}</h1>
+                    <h2>username  : {data?.username}</h2>
+                    <h2>createdAt  : {data?.createdAt?.substring(0, 10)}</h2>
+                    <h2>subscribed : {data?.subscribedToCount}</h2>
                     <h2>subscriber : {data?.subscriberCount}</h2>
                 </div>
             </div>
             <div className="flex flex-row gap-[20px] px-[20px] my-[35px] flex-wrap">
-                <Link to='/profile/videos' className='gap-3  shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] bg-[#7b312D] text-center w-[120px] py-[8px] rounded-md'>
+                <Link to='/profile/videos' className='gap-3 bg-[#7b312D] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)]  text-center w-[120px] py-[8px] rounded-md'>
                     <span className='text-xl'>Myvideo</span>
                 </Link>
-                <Link to='/profile/tweets' className='gap-3 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] bg-[#7b312D] text-center w-[120px] py-[8px] rounded-md'>
+                <Link to='/profile/tweets' className='gap-3 bg-[#7b312D] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-center w-[120px] py-[8px] rounded-md'>
                     <span className='text-xl'>MyTweets</span>
                 </Link>
-                <Link to='/profile' className='gap-3 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] bg-[#7b312D] text-center w-[120px] py-[8px] rounded-md'>
+                <Link to='/profile' className='gap-3 bg-[#7b312D] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-center w-[120px] py-[8px] rounded-md'>
                     <span className='text-xl'>Edit Profile</span>
                 </Link>
-                <Link to='/profile' className='gap-3 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] bg-[#7b312D] text-center w-[120px] py-[8px] rounded-md'>
+                <Link to='/profile' className='gap-3 bg-[#7b312D] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] text-center w-[120px] py-[8px] rounded-md'>
                     <span className='text-xl'>Playlist</span>
                 </Link>
             </div>
-            <div>
+            <div className="h-[100px]">
                 <context.Provider value={data?._id}>
                     <Outlet />
                 </context.Provider>

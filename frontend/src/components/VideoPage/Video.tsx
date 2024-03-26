@@ -65,7 +65,7 @@ function Video({ videoId }: { videoId: string }) {
                             </button>
                             <span className="text-[15px]">{copyLink}</span>
                         </div>
-                        <LikeDislike like={data?.like} dislike={data?.dislike} Id={data?._id} isDisLiked={data?.isDisLiked} isLiked={data?.isLiked} />
+                        <LikeDislike like={data?.like} dislike={data?.dislike} Id={data?._id} isDisLiked={data?.isDisLiked} isLiked={data?.isLiked} likeFunc={videoServices.toggleLikeVideo} disLikeFunc={videoServices.toggleDislikeVideo} />
                         <button className="h-[50px] w-[120px] rounded-[30px] bg-[#a52a2a] text-[20px]">
                             Subscribe
                         </button>

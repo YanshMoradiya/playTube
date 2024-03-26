@@ -52,28 +52,36 @@ const getUserTweets = asyncHandler(async (req, res) => {
             },
             {
                 $lookup: {
-                    from: "likes",
-                    as: "like",
-                    localField: "_id",
-                    foreignField: "tweet"
-                }
-            },
-            {
-                $lookup: {
-                    from: "dislikes",
-                    as: "dislike",
-                    localField: "_id",
-                    foreignField: "tweet"
-                }
-            },
-            {
-                $addFields: {
-                    like: {
-                        $size: "$like"
+                    from: "users",
+                    as: "owner",
+                    localField: "owner",
+                    foreignField: "_id",
+                    pipeline: [{
+                        $lookup: {
+                            from: "subscriptions",
+                            as: "subscribers",
+                            localField: "_id",
+                            foreignField: "channel",
+                        }
                     },
-                    dislike: {
-                        $size: "$dislike"
-                    }
+                    {
+                        $addFields: {
+                            isSubscribed: {
+                                $cond: [req?.user !== undefined, { $in: [new mongoose.Types.ObjectId(req?.user?._id), "$subscribers.subscriber"] }, false]
+                            },
+                            subscribers: {
+                                $size: "$subscribers"
+                            }
+                        }
+                    },
+                    {
+                        $project: {
+                            fullName: 1,
+                            avatar: 1,
+                            subscribers: 1,
+                            isSubscribed: 1
+                        }
+                    }]
                 }
             }
         ]);
@@ -81,7 +89,6 @@ const getUserTweets = asyncHandler(async (req, res) => {
         if (!tweets.length) {
             return res.status(200).json(new ApiResponse(200, "Tweet is not exist."));
         }
-
         return res.status(200).json(new ApiResponse(200, "Tweets fetched successfully.", tweets));
     } catch (error) {
         throw new ApiError(error.status || 500, error.message || "Tweets are not fetched.something went wrong.");

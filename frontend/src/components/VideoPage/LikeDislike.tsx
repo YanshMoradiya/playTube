@@ -1,10 +1,9 @@
 import { useState } from "react";
-import videoServices from "../../services/video.services";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IonIcon } from "@ionic/react";
 
 
-function LikeDislike({ like, dislike, Id, isDisLiked, isLiked }: { like: number, dislike: number, Id: string, isLiked: boolean, isDisLiked: boolean }) {
+function LikeDislike({ like, dislike, Id, isDisLiked, isLiked, likeFunc, disLikeFunc }: { like: number, dislike: number, Id: string, isLiked: boolean, isDisLiked: boolean, likeFunc: any, disLikeFunc: any }) {
 
     const [liked, setLiked] = useState(isLiked);
     const [disliked, setDisliked] = useState(isDisLiked);
@@ -12,7 +11,7 @@ function LikeDislike({ like, dislike, Id, isDisLiked, isLiked }: { like: number,
     const navigate = useNavigate();
     const location = useLocation();
     const likeHandler = async () => {
-        await videoServices.toggleLikeVideo(Id)
+        await likeFunc(Id)
             .then((response) => {
                 setLiked(!liked);
                 if (response.status === "addLiked" && dislike) {
@@ -30,7 +29,7 @@ function LikeDislike({ like, dislike, Id, isDisLiked, isLiked }: { like: number,
     };
 
     const dislikeHandler = async () => {
-        await videoServices.toggleDislikeVideo(Id)
+        await disLikeFunc(Id)
             .then((response) => {
                 setDisliked(!disliked);
                 if (response.status === "addDisliked" && liked) {
